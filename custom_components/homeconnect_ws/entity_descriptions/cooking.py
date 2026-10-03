@@ -34,7 +34,7 @@ def generate_oven_status(appliance: HomeAppliance) -> EntityDescriptions:
     """Get Oven status descriptions."""
     pattern = re.compile(r"^Cooking\.Oven\.Status\.Cavity\.(\d+)\..*$")
     groups = get_groups_from_regex(appliance, pattern)
-    descriptions = EntityDescriptions(event_sensor=[], sensor=[])
+    descriptions = EntityDescriptions(event_sensor=[], sensor=[], binary_sensor=[])
     for group in groups:
         group_name = f" {int(group[0])}"
         if len(groups) == 1:
@@ -68,6 +68,46 @@ def generate_oven_status(appliance: HomeAppliance) -> EntityDescriptions:
                     entity=entity,
                     device_class=SensorDeviceClass.TEMPERATURE,
                     native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                )
+            )
+
+        # Meat probe. Ovens that group status by cavity publish the probe under
+        # Cooking.Oven.Status.Cavity.<n>.* instead of the flat
+        # Cooking.Oven.Status.CurrentMeatprobeTemperature handled above, so
+        # without these the probe never shows up.
+        entity = f"Cooking.Oven.Status.Cavity.{group[0]}.CurrentMeatprobeTemperature"
+        if entity in appliance.entities:
+            descriptions["sensor"].append(
+                HCSensorEntityDescription(
+                    key=f"sensor_oven_current_meatprobe_temperature_{group[0]}",
+                    translation_key="sensor_oven_current_meatprobe_temperature_group",
+                    translation_placeholders={"group_name": group_name},
+                    entity=entity,
+                    device_class=SensorDeviceClass.TEMPERATURE,
+                    native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+                )
+            )
+
+        entity = f"Cooking.Oven.Status.Cavity.{group[0]}.MeatProbeTemperatureV2"
+        if entity in appliance.entities:
+            descriptions["sensor"].append(
+                HCSensorEntityDescription(
+                    key=f"sensor_oven_meatprobe_target_temperature_{group[0]}",
+                    translation_key="sensor_oven_meatprobe_target_temperature_group",
+                    translation_placeholders={"group_name": group_name},
+                    entity=entity,
+                    device_class=SensorDeviceClass.ENUM,
+                )
+            )
+
+        entity = f"Cooking.Oven.Status.Cavity.{group[0]}.MeatprobePlugged"
+        if entity in appliance.entities:
+            descriptions["binary_sensor"].append(
+                HCBinarySensorEntityDescription(
+                    key=f"binary_sensor_oven_meatprobe_plugged_{group[0]}",
+                    translation_key="binary_sensor_oven_meatprobe_plugged_group",
+                    translation_placeholders={"group_name": group_name},
+                    entity=entity,
                 )
             )
 

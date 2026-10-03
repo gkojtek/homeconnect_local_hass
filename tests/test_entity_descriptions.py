@@ -19,6 +19,7 @@ from custom_components.homeconnect_ws.entity_descriptions.common import (
     generate_power_switch,
     generate_program,
 )
+from custom_components.homeconnect_ws.entity_descriptions.cooking import generate_oven_status
 from custom_components.homeconnect_ws.entity_descriptions.refrigeration import (
     generate_internal_light,
     generate_internal_light_brightness,
@@ -322,3 +323,47 @@ def test_descriptions_have_english_name() -> None:
                 missing.append(f"{domain}.{key}")
 
     assert sorted(set(missing)) == []
+
+
+OVEN_CAVITY_MEATPROBE = {
+    "status": [
+        {
+            "access": "read",
+            "available": True,
+            "uid": 4096,
+            "name": "Cooking.Oven.Status.Cavity.001.CurrentTemperature",
+        },
+        {
+            "access": "read",
+            "available": True,
+            "uid": 4097,
+            "name": "Cooking.Oven.Status.Cavity.001.CurrentMeatprobeTemperature",
+        },
+        {
+            "access": "read",
+            "available": True,
+            "enumeration": {"0": "Off", "30": "30dC", "72": "72dC"},
+            "uid": 4098,
+            "name": "Cooking.Oven.Status.Cavity.001.MeatProbeTemperatureV2",
+        },
+        {
+            "access": "read",
+            "available": True,
+            "uid": 4099,
+            "name": "Cooking.Oven.Status.Cavity.001.MeatprobePlugged",
+        },
+    ]
+}
+
+
+async def test_oven_status_cavity_meatprobe(mock_homeconnect_appliance: MockApplianceType) -> None:
+    """Test meat probe entities for ovens that group status by cavity."""
+    appliance = await mock_homeconnect_appliance(description=OVEN_CAVITY_MEATPROBE)
+    descriptions = generate_oven_status(appliance)
+
+    sensor_keys = [description.key for description in descriptions["sensor"]]
+    assert "sensor_oven_current_meatprobe_temperature_001" in sensor_keys
+    assert "sensor_oven_meatprobe_target_temperature_001" in sensor_keys
+    assert [description.key for description in descriptions["binary_sensor"]] == [
+        "binary_sensor_oven_meatprobe_plugged_001"
+    ]
